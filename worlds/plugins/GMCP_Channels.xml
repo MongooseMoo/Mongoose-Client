@@ -30,13 +30,40 @@ This plugin is a bridge between GMCP channel messages and the Channel History pl
 
 <script>
 <![CDATA[
-function OnPluginBroadcast (msg, id, name, text)
---print(id)
-if id=="74f8c420df7d59ad5aa66246" then
+json=require("json")
 
+
+function strSplit(str, delim, maxNb)
+   -- Eliminate bad cases...
+   if string.find(str, delim) == nil then
+      return { str }
+   end
+   if maxNb == nil or maxNb < 1 then
+      maxNb = 0    -- No limit
+   end
+   local result = {}
+   local pat = "(.-)" .. delim .. "()"
+   local nb = 0
+   local lastPos
+   for part, pos in string.gfind(str, pat) do
+      nb = nb + 1
+      result[nb] = part
+      lastPos = pos
+      if nb == maxNb then
+         break
+      end
+   end
+   -- Handle the last field
+   if nb ~= maxNb then
+      result[nb + 1] = string.sub(str, lastPos)
+   end
+   return result
+end
+
+function OnPluginBroadcast (msg, id, name, text)
+if id=="74f8c420df7d59ad5aa66246" then
 text=Replace(text,"\\u00","~")
 package,params=unpack(strSplit(StripANSI(text)," ___ "))
-
 f=_G["gmcp_handle_"..Replace(package:lower(),".","_")]
 if f~=nil then
 f(json.decode(params))
@@ -52,7 +79,7 @@ if data.channel=="say" then
 handleSay(data)
 end
 if data.channel ~= "say" then
-handleMessage(data.channel,data.talker,data.text)
+Execute("history_add " .. data.channel .. "=(" ..data.talker ..") " .. data.text)
 end
 end
 
